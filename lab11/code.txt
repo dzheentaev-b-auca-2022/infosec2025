@@ -1,2 +1,1 @@
-chmod a+x krita-5.2.13-x86_64.AppImage 
-./krita-5.2.13-x86_64.AppImage
+sudo apt get krita
