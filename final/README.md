@@ -51,5 +51,6 @@ python3 final/main.py list-dir
 # filter by specific directory
 python3 final/main.py list -d /path/to/project
 ```
-Demo:
+
+## Link to the Demo:
 [demo.webm](https://github.com/user-attachments/assets/3e3dfdf7-d8ea-433b-8f84-10eb0a95eea3)
