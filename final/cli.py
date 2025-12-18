@@ -5,7 +5,7 @@ import os
 import sys
 from typing import Optional
 
-from notes_core import add_note, list_notes
+from notes_core import add_note, list_notes, remove_note
 
 
 def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
@@ -32,6 +32,11 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     ldir = sub.add_parser("list-dir", help="List notes from current directory")
     ldir.add_argument("--limit", "-l", type=int, default=20)
     ldir.add_argument("--db", help="(Optional) override DB path (for testing)")
+
+    # Remove subcommand
+    rm = sub.add_parser("remove", help="Remove a note by id")
+    rm.add_argument("id", type=int, help="ID of the note to remove")
+    rm.add_argument("--db", help="(Optional) override DB path (for testing)")
 
     return p.parse_args(argv)
 
@@ -78,6 +83,11 @@ def handle_list_dir_command(args: argparse.Namespace) -> None:
     list_notes(limit=args.limit, directory=current_dir, db_path=args.db)
 
 
+def handle_remove_command(args: argparse.Namespace) -> None:
+    """Handle the 'remove' subcommand."""
+    remove_note(args.id, db_path=args.db)
+
+
 def dispatch(args: argparse.Namespace) -> None:
     """Route commands to their handlers."""
     if args.cmd == "add":
@@ -86,6 +96,8 @@ def dispatch(args: argparse.Namespace) -> None:
         handle_list_command(args)
     elif args.cmd == "list-dir":
         handle_list_dir_command(args)
+    elif args.cmd == "remove":
+        handle_remove_command(args)
     else:
         print(f"Unknown command: {args.cmd}", file=sys.stderr)
         sys.exit(1)

@@ -63,6 +63,7 @@ def add_note(
     try:
         cur = conn.cursor()
         cur.execute(
+            "INSERT INTO notes (username, host, timestamp, project, tasks, notes, directory) VALUES (?, ?, ?, ?, ?, ?, ?)",
             (username, host, ts, project, tasks_text, note, directory),
         )
         conn.commit()
@@ -116,5 +117,29 @@ def list_notes(
             id_, username, host, ts, proj, tasks, notes_text, direc = row
             note = Note(id_, username, host, ts, proj, tasks, notes_text, direc)
             print(note, end="")
+    finally:
+        conn.close()
+
+
+def remove_note(
+    note_id: int,
+    db_path: Optional[str] = None,
+) -> None:
+    try:
+        conn, used_path = get_db_connection(db_path)
+    except RuntimeError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(2)
+
+    try:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM notes WHERE id = ?", (note_id,))
+        
+        if cur.rowcount == 0:
+            print(f"Error: Note with id {note_id} not found.", file=sys.stderr)
+            sys.exit(1)
+        
+        conn.commit()
+        print(f"Deleted note with id {note_id}")
     finally:
         conn.close()

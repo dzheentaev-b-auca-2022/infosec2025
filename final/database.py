@@ -9,7 +9,7 @@ def ensure_db(conn: sqlite3.Connection) -> None:
     cur.execute(
         """
         CREATE TABLE IF NOT EXISTS notes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id INTEGER PRIMARY KEY,
             username TEXT NOT NULL,
             host TEXT,
             timestamp TEXT NOT NULL,
