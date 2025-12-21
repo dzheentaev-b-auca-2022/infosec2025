@@ -18,6 +18,7 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     add.add_argument("--project", "-p", help="Project name")
     add.add_argument("--tasks", "-t", action="append", help="Task completed (can be repeated)")
     add.add_argument("--note", "-n", help="Special notes or comments")
+    add.add_argument("--hidden", action="store_true", help="Mark note as hidden (password protected)")
     add.add_argument("--db", help="(Optional) override DB path (for testing)")
 
     # List subcommand
@@ -26,6 +27,7 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     lst.add_argument("--user", help="Filter by username")
     lst.add_argument("--project", help="Filter by project")
     lst.add_argument("--directory", "-d", help="Filter by directory")
+    lst.add_argument("--hidden", action="store_true", help="Show hidden notes (requires password)")
     lst.add_argument("--db", help="(Optional) override DB path (for testing)")
 
     # List-dir subcommand
@@ -63,17 +65,32 @@ def handle_add_command(args: argparse.Namespace) -> None:
         print("Provide at least one --tasks (-t) or pass tasks via stdin.")
         sys.exit(1)
     
-    add_note(args.project, tasks, args.note, db_path=args.db)
+    password = None
+    if args.hidden:
+        import getpass
+        password = getpass.getpass("Enter password for hidden note: ")
+        if not password:
+            print("Error: Password required for hidden note.", file=sys.stderr)
+            sys.exit(1)
+
+    add_note(args.project, tasks, args.note, db_path=args.db, hidden=args.hidden, password=password)
 
 
 def handle_list_command(args: argparse.Namespace) -> None:
     """Handle the 'list' subcommand."""
+    password = None
+    if args.hidden:
+        import getpass
+        password = getpass.getpass("Enter password to view hidden notes: ")
+    
     list_notes(
         limit=args.limit,
         user=args.user,
         project=args.project,
         directory=args.directory,
         db_path=args.db,
+        show_hidden=args.hidden,
+        password=password,
     )
 
 

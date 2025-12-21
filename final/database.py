@@ -16,7 +16,9 @@ def ensure_db(conn: sqlite3.Connection) -> None:
             project TEXT,
             tasks TEXT,
             notes TEXT,
-            directory TEXT
+            directory TEXT,
+            is_hidden INTEGER DEFAULT 0,
+            password_hash TEXT
         )
         """
     )

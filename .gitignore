@@ -1,1 +1,7 @@
-./final/__pycache__
+final/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+venv/
+*.db

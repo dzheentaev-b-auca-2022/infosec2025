@@ -1,5 +1,6 @@
 import datetime
 import getpass
+import hashlib
 import os
 import socket
 import sys
@@ -19,6 +20,7 @@ class Note:
         tasks: Optional[str],
         notes: Optional[str],
         directory: Optional[str],
+        is_hidden: bool = False,
     ):
         self.id = id
         self.username = username
@@ -28,10 +30,12 @@ class Note:
         self.tasks = tasks
         self.notes = notes
         self.directory = directory
+        self.is_hidden = is_hidden
     
     def __str__(self) -> str:
+        hidden_mark = " [HIDDEN]" if self.is_hidden else ""
         lines = [
-            f"[{self.id}] {self.timestamp} | {self.username}@{self.host} | "
+            f"[{self.id}]{hidden_mark} {self.timestamp} | {self.username}@{self.host} | "
             f"project={self.project or '-'} | dir={self.directory or '-'}"
         ]
         if self.tasks:
@@ -42,15 +46,30 @@ class Note:
         return "\n".join(lines)
 
 
+def hash_password(password: str) -> str:
+    """Simple SHA-256 hash for password protection."""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+
 def add_note(
     project: Optional[str],
     tasks: Iterable[str],
     note: Optional[str],
     db_path: Optional[str] = None,
+    hidden: bool = False,
+    password: Optional[str] = None,
 ) -> None:
-    username = getpass.getuser()
-    host = socket.gethostname()
-    directory = os.getcwd()
+    privacy_level = os.environ.get("NOTES_PRIVACY_LEVEL", "full").lower()
+    
+    if privacy_level == "minimal":
+        username = "user"
+        host = "host"
+        directory = "/redacted"
+    else:
+        username = getpass.getuser() if not os.environ.get("NOTES_HIDE_USERNAME") else "user"
+        host = socket.gethostname() if not os.environ.get("NOTES_HIDE_HOST") else "host"
+        directory = os.getcwd() if not os.environ.get("NOTES_HIDE_DIR") else "/redacted"
+
     ts = datetime.datetime.utcnow().isoformat() + "Z"
     tasks_text = "; ".join([t.strip() for t in tasks if t.strip()])
 
@@ -60,11 +79,13 @@ def add_note(
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(2)
 
+    pw_hash = hash_password(password) if hidden and password else None
+
     try:
         cur = conn.cursor()
         cur.execute(
-            "INSERT INTO notes (username, host, timestamp, project, tasks, notes, directory) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (username, host, ts, project, tasks_text, note, directory),
+            "INSERT INTO notes (username, host, timestamp, project, tasks, notes, directory, is_hidden, password_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (username, host, ts, project, tasks_text, note, directory, 1 if hidden else 0, pw_hash),
         )
         conn.commit()
         print(f"Saved note for user '{username}' to {used_path}")
@@ -78,6 +99,8 @@ def list_notes(
     project: Optional[str] = None,
     directory: Optional[str] = None,
     db_path: Optional[str] = None,
+    show_hidden: bool = False,
+    password: Optional[str] = None,
 ) -> None:
     try:
         conn, _ = get_db_connection(db_path)
@@ -87,9 +110,22 @@ def list_notes(
 
     try:
         cur = conn.cursor()
-        q = "SELECT id, username, host, timestamp, project, tasks, notes, directory FROM notes"
+        q = "SELECT id, username, host, timestamp, project, tasks, notes, directory, is_hidden, password_hash FROM notes"
         conds = []
         params = []
+        
+        if not show_hidden:
+            conds.append("is_hidden = 0")
+        elif password:
+            # We don't filter by password in SQL for simplicity in this demo, 
+            # we check it after fetching or we could filter by hash if we want.
+            # Filtering by hash is better if we have many notes.
+            conds.append("(is_hidden = 0 OR (is_hidden = 1 AND password_hash = ?))")
+            params.append(hash_password(password))
+        else:
+            # show_hidden is true but no password provided -> only show non-hidden
+            conds.append("is_hidden = 0")
+
         
         if user:
             conds.append("username = ?")
@@ -114,8 +150,8 @@ def list_notes(
             return
         
         for row in rows:
-            id_, username, host, ts, proj, tasks, notes_text, direc = row
-            note = Note(id_, username, host, ts, proj, tasks, notes_text, direc)
+            id_, username, host, ts, proj, tasks, notes_text, direc, hidden_flag, pw_hash = row
+            note = Note(id_, username, host, ts, proj, tasks, notes_text, direc, bool(hidden_flag))
             print(note, end="")
     finally:
         conn.close()
